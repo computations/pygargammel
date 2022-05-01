@@ -103,13 +103,20 @@ class AdnaFragment:
             d.apply_to_seq(mut_seq)
         return mut_seq
 
-    def to_sequence(self):
-        return Seq(self._to_sequence_mut())
+    def to_sequence(self, ungap=False):
+        tmp_seq = Seq(self._to_sequence_mut())
+        if ungap:
+            tmp_seq = tmp_seq.ungap()
+        return tmp_seq
 
-    def to_aligned_sequence(self, sequence_length):
+    def to_aligned_sequence(self, sequence_length, ungap=False):
         mut_seq = self._to_sequence_mut()
-        return ('N' * self._start_index) + mut_seq + (
-            'N' * (sequence_length - (len(mut_seq) + self._start_index)))
+        tmp_seq = Seq(('N' * self._start_index) + mut_seq +
+                      ('N' * (sequence_length -
+                              (len(mut_seq) + self._start_index))))
+        if ungap:
+            tmp_seq = tmp_seq.ungap()
+        return tmp_seq
 
     def __str__(self):
         return f"(start: {self._start_index}, end: {self._end_index}, left overhang: {self._overhang_left_len}, right overhang: {self._overhang_right_len})"
@@ -163,6 +170,9 @@ class AdnaFragment:
         obj_dict.pop("_sequence", None)
         return obj_dict
 
+    def ungap(self):
+        self._sequence = self._sequence.ungap()
+
 
 def produce_nicks(sequence, nick_freq):
     nicks = []
@@ -192,7 +202,7 @@ def filter_fragments(frags, min_len=0):
     for frag in frags:
         if len(frag) < min_len:
             continue
-        if len(frag.to_sequence().ungap()) == 0:
+        if len(frag.to_sequence(ungap=True)) == 0:
             continue
         ret_frags.append(frag)
 
@@ -217,6 +227,9 @@ if __name__ == "__main__":
                         required=True)
 
     parser.add_argument("--align",
+                        action=argparse.BooleanOptionalAction,
+                        default=False)
+    parser.add_argument("--ungap",
                         action=argparse.BooleanOptionalAction,
                         default=False)
     parser.add_argument("--output", type=str, required=True)
@@ -250,8 +263,9 @@ if __name__ == "__main__":
                                          "\n").encode('utf-8'))
                         fastafile.write(
                             bytes(
-                                f.to_aligned_sequence(len(sequence)) if args.
-                                align else f.to_sequence()))
+                                f.to_aligned_sequence(
+                                    len(sequence), ungap=args.ungap) if args.
+                                align else f.to_sequence(ungap=args.ungap)))
                         fastafile.write(b"\n")
                 logfile.write(
                     json.dumps([f.to_dict() for f in frags],
