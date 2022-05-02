@@ -123,19 +123,31 @@ class AdnaFragment:
 
     def add_overhang(self, overhang_length_param):
         sequence_len = len(self._sequence)
+        if sequence_len == 0:
+            self.left_overhang = 0
+            self.right_overhang = 0
+            return
         left_overhang_len = sequence_len
         right_overhang_len = sequence_len
+        iters = 0
 
-        while (left_overhang_len > sequence_len
-               and right_overhang_len > sequence_len
-               and right_overhang_len + left_overhang_len > sequence_len):
+        while (left_overhang_len >= sequence_len
+               or right_overhang_len >= sequence_len
+               or right_overhang_len + left_overhang_len >= sequence_len):
             left_overhang_len = numpy.random.geometric(
                 overhang_length_param) - 1
             right_overhang_len = numpy.random.geometric(
                 overhang_length_param) - 1
+            iters += 1
+            if iters % 10000 == 0:
+                print(
+                    "We are having trouble generating overhangs for this set of parameters. Please consider changing the parameters to shorten the overhangs"
+                )
 
         self.left_overhang = left_overhang_len
         self.right_overhang = right_overhang_len
+        if (self.right_overhang + self.left_overhang) > sequence_len:
+            raise RuntimeError("Overhangs cannot be longer than the fragment")
 
     def _roll_damage(self, index, seq_char, test_char, damage_char, rate):
         if seq_char.lower() == test_char.lower():
