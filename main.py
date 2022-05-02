@@ -42,26 +42,33 @@ class SiteDamage:
                 f"The old character ({self._old_character}) did not match the actual character ({mutseq[self._relative_index]})"
             )
 
+    def to_dict(self):
+        return {
+            "index": self._relative_index,
+            "old": self._old_character,
+            "new": self._new_character
+        }
+
     def __str__(self):
         return f"(index: {self._relative_index}, old: {self._old_character}, new: {self._new_character})"
 
 
 class AdnaFragment:
 
-    def __init__(self, sequence, start, end, sequence_name):
+    def __init__(self, sequence, start, end, taxa_name):
         self._start_index = start
         self._end_index = end
         self._sequence = sequence[self._start_index:self._end_index]
-        self._sequence_name = sequence_name
+        self._taxa_name = taxa_name
         self._damage = []
 
     @property
-    def sequence_name(self):
-        return self._sequence_name
+    def taxa_name(self):
+        return self._taxa_name
 
     @property
     def annotated_sequence_name(self):
-        return self.sequence_name + "_" + str(self._start_index) + "-" + str(
+        return self.taxa_name + "_" + str(self._start_index) + "-" + str(
             self._end_index)
 
     @property
@@ -178,8 +185,14 @@ class AdnaFragment:
         self._add_a_to_g_damage(single_strand_rate, double_strand_rate)
 
     def to_dict(self):
-        obj_dict = vars(self)
-        obj_dict.pop("_sequence", None)
+        obj_dict = {
+            "start": self._start_index,
+            "end": self._end_index,
+            "taxa": self._taxa_name,
+            "damage": [d.to_dict() for d in self._damage],
+            "overhang_l_len": self.left_overhang,
+            "overhang_r_len": self.right_overhang,
+        }
         return obj_dict
 
     def ungap(self):
@@ -194,18 +207,16 @@ def produce_nicks(sequence, nick_freq):
     return nicks
 
 
-def produce_fragments(nicks, sequence, sequence_name):
+def produce_fragments(nicks, sequence, taxa_name):
     fragments = []
-    fragments.append(AdnaFragment(sequence, 0, nicks[0].index(),
-                                  sequence_name))
+    fragments.append(AdnaFragment(sequence, 0, nicks[0].index(), taxa_name))
 
     for n1, n2 in itertools.pairwise(nicks):
         fragments.append(
-            AdnaFragment(sequence, n1.index(), n2.index(), sequence_name))
+            AdnaFragment(sequence, n1.index(), n2.index(), taxa_name))
 
     fragments.append(
-        AdnaFragment(sequence, nicks[-1].index(), len(sequence),
-                     sequence_name))
+        AdnaFragment(sequence, nicks[-1].index(), len(sequence), taxa_name))
     return fragments
 
 
