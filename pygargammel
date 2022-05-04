@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy
+import os
 import enum
-import itertools
+import sys
 import json
 import gzip
 from Bio import SeqIO
@@ -105,25 +106,23 @@ class AdnaFragment:
         self._damage.append(damage)
 
     def _to_sequence_mut(self):
-        mut_seq = MutableSeq(self._sequence)
+        mut_seq = MutableSeq(str(self._sequence))
         for d in self._damage:
             d.apply_to_seq(mut_seq)
         return mut_seq
 
     def to_sequence(self, ungap=False):
-        tmp_seq = Seq(self._to_sequence_mut())
+        tmp_seq = Seq(str(self._to_sequence_mut()))
         if ungap:
-            tmp_seq = tmp_seq.ungap()
+            tmp_seq = tmp_seq.ungap('N')
         return tmp_seq
 
-    def to_aligned_sequence(self, sequence_length, ungap=False):
+    def to_aligned_sequence(self, sequence_length):
         mut_seq = self._to_sequence_mut()
-        tmp_seq = Seq(('N' * self._start_index) + mut_seq +
+        tmp_str = str(('N' * self._start_index) + mut_seq +
                       ('N' * (sequence_length -
                               (len(mut_seq) + self._start_index))))
-        if ungap:
-            tmp_seq = tmp_seq.ungap()
-        return tmp_seq
+        return Seq(tmp_str)
 
     def __str__(self):
         return f"(start: {self._start_index}, end: {self._end_index}, left overhang: {self._overhang_left_len}, right overhang: {self._overhang_right_len})"
@@ -211,7 +210,7 @@ def produce_fragments(nicks, sequence, taxa_name):
     fragments = []
     fragments.append(AdnaFragment(sequence, 0, nicks[0].index(), taxa_name))
 
-    for n1, n2 in itertools.pairwise(nicks):
+    for n1, n2 in zip(nicks, nicks[1:]):
         fragments.append(
             AdnaFragment(sequence, n1.index(), n2.index(), taxa_name))
 
@@ -232,6 +231,37 @@ def filter_fragments(frags, min_len=0):
     return ret_frags
 
 
+def write_frags_to_fasta_file(frags,
+                              filename,
+                              align,
+                              ungap=False,
+                              compress=True):
+    fastafile = None
+    if compress:
+        filename_ext = os.path.splitext(filename)[1]
+        if (filename_ext == '.gz' or filename_ext == ".gzip"):
+            filename += '.gz'
+        fastafile = gzip.GzipFile(filename, 'a')
+    else:
+        fastafile = open(filename, 'a')
+
+    for f in frags:
+        taxa_line = ">" + f.annotated_sequence_name + "\n"
+        sequence_line = None
+        if align:
+            sequence_line =\
+                    str(f.to_aligned_sequence(len(sequence))) + "\n"
+        else:
+            sequence_line =\
+                    str(f.to_sequence(ungap=ungap)) + "\n"
+        if compress:
+            taxa_line = taxa_line.encode('utf-8')
+            sequence_line = sequence_line.encode('utf-8')
+
+        fastafile.write(taxa_line)
+        fastafile.write(sequence_line)
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -249,18 +279,29 @@ if __name__ == "__main__":
                         type=float,
                         required=True)
 
-    parser.add_argument("--align",
-                        action=argparse.BooleanOptionalAction,
-                        default=False)
-    parser.add_argument("--ungap",
-                        action=argparse.BooleanOptionalAction,
-                        default=False)
+    parser.add_argument("--align", action="store_true", default=False)
+    parser.add_argument("--compress", action="store_true", default=False)
+    parser.add_argument("--ungap", action="store_true", default=False)
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--log", type=str, required=True)
     parser.add_argument("--seed", type=int)
     args = parser.parse_args()
 
     alignment = SeqIO.parse(open(args.fasta), 'fasta')
+
+    if os.path.exists(args.output):
+        print("Output file exists, refusing to overwrite the output file")
+        sys.exit(1)
+
+    output_ext = os.path.splitext(args.output)[1].lower()
+    if args.compress and not (output_ext == '.gz' or output_ext == ".gzip"):
+        args.output += ".gz"
+
+    if args.align and args.ungap:
+        print(
+            "Refusing to align and ungap the sequence. These flags are incompatable"
+        )
+        sys.exit(1)
 
     if not args.seed is None:
         numpy.random.default_rng(args.seed)
@@ -280,16 +321,8 @@ if __name__ == "__main__":
                     frags,
                     args.min_length if not args.min_length is None else 0)
                 total_fragments += len(frags)
-                with gzip.GzipFile(args.output + ".gz", 'a') as fastafile:
-                    for f in frags:
-                        fastafile.write((">" + f.annotated_sequence_name +
-                                         "\n").encode('utf-8'))
-                        fastafile.write(
-                            bytes(
-                                f.to_aligned_sequence(
-                                    len(sequence), ungap=args.ungap) if args.
-                                align else f.to_sequence(ungap=args.ungap)))
-                        fastafile.write(b"\n")
+                write_frags_to_fasta_file(frags, args.output, args.align,
+                                          args.ungap, args.compress)
                 logfile.write(
                     json.dumps([f.to_dict() for f in frags],
                                default=vars).encode('utf-8'))
