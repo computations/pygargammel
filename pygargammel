@@ -115,6 +115,8 @@ class AdnaFragment:
         tmp_seq = Seq(str(self._to_sequence_mut()))
         if ungap:
             tmp_seq = tmp_seq.ungap('N')
+            tmp_seq = tmp_seq.ungap('n')
+            tmp_seq = tmp_seq.ungap('-')
         return tmp_seq
 
     def to_aligned_sequence(self, sequence_length):
@@ -199,23 +201,23 @@ class AdnaFragment:
 
 
 def produce_nicks(sequence, nick_freq):
-    nicks = []
-    for i, _ in enumerate(sequence):
+    nicks = [DnaNick(0)]
+    for i, _ in enumerate(sequence, start=1):
         if numpy.random.uniform() < nick_freq:
             nicks.append(DnaNick(i))
+    nicks.append(DnaNick(len(sequence)))
     return nicks
 
 
 def produce_fragments(nicks, sequence, taxa_name):
     fragments = []
-    fragments.append(AdnaFragment(sequence, 0, nicks[0].index(), taxa_name))
+    #fragments.append(AdnaFragment(sequence, 0, nicks[0].index(), taxa_name))
 
     for n1, n2 in zip(nicks, nicks[1:]):
         fragments.append(
             AdnaFragment(sequence, n1.index(), n2.index(), taxa_name))
 
-    fragments.append(
-        AdnaFragment(sequence, nicks[-1].index(), len(sequence), taxa_name))
+    #fragments.append( AdnaFragment(sequence, nicks[-1].index(), len(sequence), taxa_name))
     return fragments
 
 
