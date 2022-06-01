@@ -68,7 +68,7 @@ class AdnaFragment:
         return self._taxa_name
 
     @property
-    def annotated_sequence_name(self):
+    def annotated_taxa_name(self):
         return self.taxa_name + "_" + str(self._start_index) + "-" + str(
             self._end_index)
 
@@ -124,6 +124,8 @@ class AdnaFragment:
         tmp_str = str(('N' * self._start_index) + mut_seq +
                       ('N' * (sequence_length -
                               (len(mut_seq) + self._start_index))))
+        if len(tmp_str) != sequence_length:
+            raise RuntimeError("The aligned sequence length is the wrong size")
         return Seq(tmp_str)
 
     def __str__(self):
@@ -224,20 +226,15 @@ def produce_fragments(nicks, sequence, taxa_name):
 def filter_fragments(frags, min_len=0):
     ret_frags = []
     for frag in frags:
-        if len(frag) < min_len:
-            continue
-        if len(frag.to_sequence(ungap=True)) == 0:
+        if len(frag.to_sequence(ungap=True)) < min_len:
             continue
         ret_frags.append(frag)
 
     return ret_frags
 
 
-def write_frags_to_fasta_file(frags,
-                              filename,
-                              align,
-                              ungap=False,
-                              compress=True):
+def write_frags_to_fasta_file(frags, filename, align, ungap, compress,
+                              format_taxa_name):
     fastafile = None
     if compress:
         filename_ext = os.path.splitext(filename)[1]
@@ -248,7 +245,12 @@ def write_frags_to_fasta_file(frags,
         fastafile = open(filename, 'a')
 
     for f in frags:
-        taxa_line = ">" + f.annotated_sequence_name + "\n"
+        taxa_line = None
+        if format_taxa_name:
+            taxa_line = ">" + f.annotated_taxa_name + "\n"
+        else:
+            taxa_line = ">" + f.taxa_name + "\n"
+
         sequence_line = None
         if align:
             sequence_line =\
@@ -273,6 +275,7 @@ if __name__ == "__main__":
     parser.add_argument("--overhang-parameter", type=float, required=True)
     parser.add_argument("--min-length", type=int, required=False, default=None)
     parser.add_argument("--min-fragments", type=int, required=False, default=0)
+    parser.add_argument("--max-fragments", type=int, required=False)
 
     parser.add_argument("--double-strand-deamination",
                         type=float,
@@ -282,6 +285,9 @@ if __name__ == "__main__":
                         required=True)
 
     parser.add_argument("--align", action="store_true", default=False)
+    parser.add_argument("--format-taxa-name",
+                        action="store_true",
+                        default=False)
     parser.add_argument("--compress", action="store_true", default=False)
     parser.add_argument("--ungap", action="store_true", default=False)
     parser.add_argument("--output", type=str, required=True)
@@ -311,7 +317,10 @@ if __name__ == "__main__":
     with gzip.GzipFile(args.log + '.gz', 'w') as logfile:
         for sequence in alignment:
             total_fragments = 0
-            while total_fragments < args.min_fragments:
+            frag_list = []
+            while (total_fragments < args.min_fragments) or (
+                    not args.max_fragments is None
+                    and total_fragments < args.max_fragments):
                 nicks = produce_nicks(sequence.seq, args.nick_freq)
                 frags = produce_fragments(nicks, sequence.seq, sequence.id)
                 for frag in frags:
@@ -320,11 +329,19 @@ if __name__ == "__main__":
                                           args.double_strand_deamination)
 
                 frags = filter_fragments(
-                    frags,
-                    args.min_length if not args.min_length is None else 0)
+                    frags, 0 if args.min_length is None else args.min_length)
                 total_fragments += len(frags)
-                write_frags_to_fasta_file(frags, args.output, args.align,
-                                          args.ungap, args.compress)
-                logfile.write(
-                    json.dumps([f.to_dict() for f in frags],
-                               default=vars).encode('utf-8'))
+                frag_list.extend(frags)
+
+            if not args.max_fragments is None and len(
+                    frag_list) > args.max_fragments:
+                frag_list = numpy.random.choice(frag_list,
+                                                size=args.max_fragments,
+                                                replace=False)
+
+            write_frags_to_fasta_file(frag_list, args.output, args.align,
+                                      args.ungap, args.compress,
+                                      args.format_taxa_name)
+            logfile.write(
+                json.dumps([f.to_dict() for f in frag_list],
+                           default=vars).encode('utf-8'))
