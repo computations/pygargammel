@@ -308,7 +308,7 @@ class PremaskedReferenceAlignment:
         self._construct_premask(reference)
 
     def _extend(self, new_len):
-        self._masked_sequence = self._masked_sequence + [False] * (new_len -
+        self._masked_sequence = self._masked_sequence + [True] * (new_len -
                                                                    len(self))
 
     def __len__(self):
@@ -324,6 +324,12 @@ class PremaskedReferenceAlignment:
     def check_fragment(self, fragment):
         for cq, cr in zip(fragment, self._masked_sequence):
             if cr and is_informative_char(cq):
+                return True
+        return False
+
+    def valid(self):
+        for s in self._masked_sequence:
+            if s:
                 return True
         return False
 
@@ -363,6 +369,7 @@ if __name__ == "__main__":
     if not args.reference is None:
         reference = PremaskedReferenceAlignment(
             SeqIO.parse(open(args.fasta), 'fasta'))
+        print(reference.valid())
 
     if os.path.exists(args.output):
         print("Output file exists, refusing to overwrite the output file")
