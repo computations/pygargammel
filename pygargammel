@@ -124,16 +124,20 @@ class AdnaFragment:
     def to_sequence(self, ungap=False):
         tmp_seq = Seq(str(self._to_sequence_mut()))
         if ungap:
-            tmp_seq = tmp_seq.replace('N', '')
-            tmp_seq = tmp_seq.replace('n', '')
-            tmp_seq = tmp_seq.replace('-', '')
-            tmp_seq = tmp_seq.replace('?', '')
+            #tmp_seq = tmp_seq.replace('N', '')
+            #tmp_seq = tmp_seq.replace('n', '')
+            #tmp_seq = tmp_seq.replace('-', '')
+            #tmp_seq = tmp_seq.replace('?', '')
+            tmp_seq = tmp_seq.ungap('N')
+            tmp_seq = tmp_seq.ungap('n')
+            tmp_seq = tmp_seq.ungap('-')
+            tmp_seq = tmp_seq.ungap('?')
         return tmp_seq
 
     def to_aligned_sequence(self, sequence_length):
         mut_seq = self._to_sequence_mut()
         tmp_str = str(('-' * self._start_index) + mut_seq +
-                      ('-' * (sequence_length -
+                      ('e' * (sequence_length -
                               (len(mut_seq) + self._start_index))))
         if len(tmp_str) != sequence_length:
             raise RuntimeError("The aligned sequence length is the wrong size")
