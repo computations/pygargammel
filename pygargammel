@@ -65,6 +65,7 @@ class AdnaFragment:
         self._sequence = sequence[self._start_index:self._end_index]
         self._taxa_name = taxa_name
         self._damage = []
+        self._valid = None
 
     @property
     def taxa_name(self):
@@ -99,6 +100,12 @@ class AdnaFragment:
     def right_overhang_start_index(self):
         return len(self) - self.right_overhang
 
+    @property
+    def valid(self):
+        if self._valid is None:
+            self._valid = self._has_informative_characters()
+        return self._valid
+
     def __iter__(self, index):
         return self._sequence[index]
 
@@ -117,9 +124,10 @@ class AdnaFragment:
     def to_sequence(self, ungap=False):
         tmp_seq = Seq(str(self._to_sequence_mut()))
         if ungap:
-            tmp_seq = tmp_seq.ungap('N')
-            tmp_seq = tmp_seq.ungap('n')
-            tmp_seq = tmp_seq.ungap('-')
+            tmp_seq = tmp_seq.replace('N', '')
+            tmp_seq = tmp_seq.replace('n', '')
+            tmp_seq = tmp_seq.replace('-', '')
+            tmp_seq = tmp_seq.replace('?', '')
         return tmp_seq
 
     def to_aligned_sequence(self, sequence_length):
@@ -185,6 +193,12 @@ class AdnaFragment:
                               start=self.right_overhang_start_index):
             self._roll_damage(i, c, 'A', 'G', single_strand_rate)
 
+    def _has_informative_characters(self):
+        for c in self._sequence:
+            if self.is_informative_char(c):
+                return True
+        return False
+
     def add_deaminations(self, single_strand_rate, double_strand_rate):
         # add left overhand damage
         self._add_c_to_t_damage(single_strand_rate, double_strand_rate)
@@ -207,6 +221,11 @@ class AdnaFragment:
     def __dict__(self):
         return self.to_dict()
 
+    @staticmethod
+    def is_informative_char(c):
+        if c == 'N' or c == '-' or c == 'n' or c == '?':
+            return False
+        return True
 
 def produce_nicks(sequence, nick_freq):
     nicks = [DnaNick(0)]
@@ -232,6 +251,8 @@ def produce_fragments(nicks, sequence, taxa_name):
 def filter_fragments(frags, min_len=0):
     ret_frags = []
     for frag in frags:
+        if not frag.valid:
+            continue
         if len(frag.to_sequence(ungap=True)) < min_len:
             continue
         ret_frags.append(frag)
@@ -280,7 +301,7 @@ if __name__ == "__main__":
     parser.add_argument("--nick-freq", type=float, required=True)
     parser.add_argument("--overhang-parameter", type=float, required=True)
     parser.add_argument("--min-length", type=int, required=False, default=None)
-    parser.add_argument("--min-fragments", type=int, required=False, default=0)
+    parser.add_argument("--min-fragments", type=int, required=False, default=1)
     parser.add_argument("--max-fragments", type=int, required=False)
 
     parser.add_argument("--double-strand-deamination",
@@ -325,20 +346,20 @@ if __name__ == "__main__":
         for sequence in alignment:
             total_fragments = 0
             frag_list = []
-            while (total_fragments < args.min_fragments) or (
-                    not args.max_fragments is None
-                    and total_fragments < args.max_fragments):
+
+            while True:
                 nicks = produce_nicks(sequence.seq, args.nick_freq)
                 frags = produce_fragments(nicks, sequence.seq, sequence.id)
                 for frag in frags:
                     frag.add_overhang(args.overhang_parameter)
                     frag.add_deaminations(args.single_strand_deamination,
                                           args.double_strand_deamination)
-
                 frags = filter_fragments(
                     frags, 0 if args.min_length is None else args.min_length)
-                total_fragments += len(frags)
-                frag_list.extend(frags)
+                if len(frags) >= args.min_fragments:
+                    total_fragments += len(frags)
+                    frag_list.extend(frags)
+                    break
 
             if not args.max_fragments is None and len(
                     frag_list) > args.max_fragments:
