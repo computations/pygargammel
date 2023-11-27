@@ -309,7 +309,7 @@ class PremaskedReferenceAlignment:
 
     def _extend(self, new_len):
         self._masked_sequence = self._masked_sequence + [True] * (new_len -
-                                                                   len(self))
+                                                                  len(self))
 
     def __len__(self):
         return len(self._masked_sequence)
@@ -369,7 +369,11 @@ if __name__ == "__main__":
     if not args.reference is None:
         reference = PremaskedReferenceAlignment(
             SeqIO.parse(open(args.fasta), 'fasta'))
-        print(reference.valid())
+        if not reference.valid():
+            print(
+                "reference was passed, but there is no common column in the reference"
+            )
+            sys.exit(1)
 
     if os.path.exists(args.output):
         print("Output file exists, refusing to overwrite the output file")
