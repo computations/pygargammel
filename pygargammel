@@ -7,6 +7,7 @@ import sys
 import json
 import gzip
 from Bio import SeqIO
+from Bio import AlignIO
 from Bio.Seq import MutableSeq, Seq
 
 
@@ -106,8 +107,8 @@ class AdnaFragment:
             self._valid = self._has_informative_characters()
         return self._valid
 
-    def __iter__(self, index):
-        return self._sequence[index]
+    def __iter__(self):
+        return iter(self._sequence)
 
     def __len__(self):
         return len(self._sequence)
@@ -199,7 +200,7 @@ class AdnaFragment:
 
     def _has_informative_characters(self):
         for c in self._sequence:
-            if self.is_informative_char(c):
+            if is_informative_char(c):
                 return True
         return False
 
@@ -225,11 +226,12 @@ class AdnaFragment:
     def __dict__(self):
         return self.to_dict()
 
-    @staticmethod
-    def is_informative_char(c):
-        if c == 'N' or c == '-' or c == 'n' or c == '?':
-            return False
-        return True
+
+def is_informative_char(c):
+    if c == 'N' or c == '-' or c == 'n' or c == '?':
+        return False
+    return True
+
 
 def produce_nicks(sequence, nick_freq):
     nicks = [DnaNick(0)]
@@ -252,12 +254,14 @@ def produce_fragments(nicks, sequence, taxa_name):
     return fragments
 
 
-def filter_fragments(frags, min_len=0):
+def filter_fragments(frags, reference=None, min_len=0):
     ret_frags = []
     for frag in frags:
         if not frag.valid:
             continue
         if len(frag.to_sequence(ungap=True)) < min_len:
+            continue
+        if not reference is None and not reference.check_fragment(frag):
             continue
         ret_frags.append(frag)
 
@@ -297,6 +301,33 @@ def write_frags_to_fasta_file(frags, filename, align, ungap, compress,
         fastafile.write(sequence_line)
 
 
+class PremaskedReferenceAlignment:
+
+    def __init__(self, reference):
+        self._masked_sequence = []
+        self._construct_premask(reference)
+
+    def _extend(self, new_len):
+        self._masked_sequence = self._masked_sequence + [False] * (new_len -
+                                                                   len(self))
+
+    def __len__(self):
+        return len(self._masked_sequence)
+
+    def _construct_premask(self, reference):
+        for alignment in reference:
+            if len(self) < len(alignment):
+                self._extend(len(alignment))
+            for i, c in enumerate(alignment):
+                self._masked_sequence[i] |= is_informative_char(c)
+
+    def check_fragment(self, fragment):
+        for cq, cr in zip(fragment, self._masked_sequence):
+            if cr and is_informative_char(cq):
+                return True
+        return False
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -324,9 +355,14 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--log", type=str, required=True)
     parser.add_argument("--seed", type=int)
+    parser.add_argument("--reference", type=str)
     args = parser.parse_args()
 
     alignment = SeqIO.parse(open(args.fasta), 'fasta')
+    reference = None
+    if not args.reference is None:
+        reference = PremaskedReferenceAlignment(
+            SeqIO.parse(open(args.fasta), 'fasta'))
 
     if os.path.exists(args.output):
         print("Output file exists, refusing to overwrite the output file")
@@ -359,7 +395,8 @@ if __name__ == "__main__":
                     frag.add_deaminations(args.single_strand_deamination,
                                           args.double_strand_deamination)
                 frags = filter_fragments(
-                    frags, 0 if args.min_length is None else args.min_length)
+                    frags, reference,
+                    0 if args.min_length is None else args.min_length)
                 if len(frags) >= args.min_fragments:
                     total_fragments += len(frags)
                     frag_list.extend(frags)
