@@ -30,4 +30,4 @@ options:
 - `--single-strand-deamination`: Rate at deamination will occur in single strand regions. Accepts values between 0.0
   and 1.0, with 0.0 being no deamination, and 1.0 being total deamination.
 - `--reference`: Ensure that generated fragments have at least _one_ informative
-  character in common with at least _one_ sequence in the alignment.
+  character in common with _all_ sequence in the alignment.

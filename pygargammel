@@ -319,7 +319,7 @@ class PremaskedReferenceAlignment:
             if len(self) < len(alignment):
                 self._extend(len(alignment))
             for i, c in enumerate(alignment):
-                self._masked_sequence[i] |= is_informative_char(c)
+                self._masked_sequence[i] &= is_informative_char(c)
 
     def check_fragment(self, fragment):
         for cq, cr in zip(fragment, self._masked_sequence):
