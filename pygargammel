@@ -11,6 +11,8 @@ from Bio import AlignIO
 from Bio.Seq import MutableSeq, Seq
 
 
+RNG = None
+
 class Strand(enum.Enum):
     POSITIVE = enum.auto()
     NEGATIVE = enum.auto()
@@ -107,6 +109,14 @@ class AdnaFragment:
             self._valid = self._has_informative_characters()
         return self._valid
 
+    @property
+    def start_index(self):
+        return self._start_index
+
+    @property
+    def end_index(self):
+        return self._end_index
+
     def __iter__(self):
         return iter(self._sequence)
 
@@ -155,9 +165,9 @@ class AdnaFragment:
             return
 
         left_overhang_len = numpy.clip(
-            numpy.random.geometric(overhang_length_param) - 1, 0, sequence_len)
+            RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
         right_overhang_len = numpy.clip(
-            numpy.random.geometric(overhang_length_param) - 1, 0, sequence_len)
+            RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
 
         if (left_overhang_len + right_overhang_len) > sequence_len:
             left_overhang_ratio = left_overhang_len / (left_overhang_len +
@@ -165,7 +175,7 @@ class AdnaFragment:
             left_overhang_len = int(sequence_len * left_overhang_ratio)
             right_overhang_len = int(sequence_len * (1 - left_overhang_ratio))
             if left_overhang_len + right_overhang_len - sequence_len == 1:
-                if numpy.random.random() > 0.5:
+                if RNG.random() > 0.5:
                     left_overhang_len += 1
                 else:
                     right_overhang_len += 1
@@ -177,7 +187,7 @@ class AdnaFragment:
 
     def _roll_damage(self, index, seq_char, test_char, damage_char, rate):
         if seq_char.lower() == test_char.lower():
-            if numpy.random.uniform() < rate:
+            if RNG.uniform() < rate:
                 tmp_damage = SiteDamage(index, seq_char, damage_char)
                 self.add_damage(tmp_damage)
 
@@ -226,6 +236,10 @@ class AdnaFragment:
     def __dict__(self):
         return self.to_dict()
 
+    def to_informative_mask(self):
+        func = numpy.vectorize(is_informative_char)
+        return func(self._sequence)
+
 
 def is_informative_char(c):
     if c == 'N' or c == '-' or c == 'n' or c == '?':
@@ -236,7 +250,7 @@ def is_informative_char(c):
 def produce_nicks(sequence, nick_freq):
     nicks = [DnaNick(0)]
     for i, _ in enumerate(sequence, start=1):
-        if numpy.random.uniform() < nick_freq:
+        if RNG.uniform() < nick_freq:
             nicks.append(DnaNick(i))
     nicks.append(DnaNick(len(sequence)))
     return nicks
@@ -320,18 +334,16 @@ class PremaskedReferenceAlignment:
                 self._extend(len(alignment))
             for i, c in enumerate(alignment):
                 self._masked_sequence[i] &= is_informative_char(c)
+        self._masked_sequence = numpy.array(self._masked_sequence)
 
-    def check_fragment(self, fragment):
-        for cq, cr in zip(fragment, self._masked_sequence):
-            if cr and is_informative_char(cq):
-                return True
-        return False
+    def check_fragment(self, fragment: AdnaFragment):
+        frag_mask = fragment.to_informative_mask()
+        res = frag_mask & self._masked_sequence[fragment.start_index:fragment.
+                                                end_index]
+        return res.any()
 
     def valid(self):
-        for s in self._masked_sequence:
-            if s:
-                return True
-        return False
+        return self._masked_sequence.any()
 
 
 if __name__ == "__main__":
@@ -367,6 +379,7 @@ if __name__ == "__main__":
     alignment = SeqIO.parse(open(args.fasta), 'fasta')
     reference = None
     if not args.reference is None:
+        print("using reference")
         reference = PremaskedReferenceAlignment(
             SeqIO.parse(open(args.fasta), 'fasta'))
         if not reference.valid():
@@ -389,8 +402,10 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
+    RNG = numpy.random.Generator(numpy.random.PCG64())
+
     if not args.seed is None:
-        numpy.random.default_rng(args.seed)
+        RNG = numpy.random.Generator(numpy.random.PCG64(args.seed))
 
     all_frags = []
     with gzip.GzipFile(args.log + '.gz', 'w') as logfile:
@@ -399,6 +414,7 @@ if __name__ == "__main__":
             frag_list = []
 
             while True:
+                print("generating frags for", sequence.id)
                 nicks = produce_nicks(sequence.seq, args.nick_freq)
                 frags = produce_fragments(nicks, sequence.seq, sequence.id)
                 for frag in frags:
@@ -415,7 +431,7 @@ if __name__ == "__main__":
 
             if not args.max_fragments is None and len(
                     frag_list) > args.max_fragments:
-                frag_list = numpy.random.choice(frag_list,
+                frag_list = RNG.choice(frag_list,
                                                 size=args.max_fragments,
                                                 replace=False)
 
