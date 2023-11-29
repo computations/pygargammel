@@ -379,7 +379,6 @@ if __name__ == "__main__":
     alignment = SeqIO.parse(open(args.fasta), 'fasta')
     reference = None
     if not args.reference is None:
-        print("using reference")
         reference = PremaskedReferenceAlignment(
             SeqIO.parse(open(args.fasta), 'fasta'))
         if not reference.valid():
@@ -414,7 +413,6 @@ if __name__ == "__main__":
             frag_list = []
 
             while True:
-                print("generating frags for", sequence.id)
                 nicks = produce_nicks(sequence.seq, args.nick_freq)
                 frags = produce_fragments(nicks, sequence.seq, sequence.id)
                 for frag in frags:
