@@ -352,15 +352,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--fasta", type=str, required=True)
     parser.add_argument("--nick-freq", type=float, required=True)
-    parser.add_argument("--overhang-parameter", type=float, required=True)
+    parser.add_argument("--overhang-parameter", "--overhang", type=float, required=True)
     parser.add_argument("--min-length", type=int, required=False, default=None)
     parser.add_argument("--min-fragments", type=int, required=False, default=1)
     parser.add_argument("--max-fragments", type=int, required=False)
 
-    parser.add_argument("--double-strand-deamination",
+    parser.add_argument("--double-strand-deamination", "--ds", 
                         type=float,
                         required=True)
-    parser.add_argument("--single-strand-deamination",
+    parser.add_argument("--single-strand-deamination", "--ss",
                         type=float,
                         required=True)
 
