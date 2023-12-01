@@ -380,7 +380,7 @@ if __name__ == "__main__":
     reference = None
     if not args.reference is None:
         reference = PremaskedReferenceAlignment(
-            SeqIO.parse(open(args.fasta), 'fasta'))
+            SeqIO.parse(open(args.reference), 'fasta'))
         if not reference.valid():
             print(
                 "reference was passed, but there is no common column in the reference"
