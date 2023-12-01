@@ -351,7 +351,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--fasta", type=str, required=True)
-    parser.add_argument("--nick-freq", type=float, required=True)
+    parser.add_argument("--nick-freq","--nf", type=float, required=True)
     parser.add_argument("--overhang-parameter", "--overhang", type=float, required=True)
     parser.add_argument("--min-length", type=int, required=False, default=None)
     parser.add_argument("--min-fragments", type=int, required=False, default=1)
