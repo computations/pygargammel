@@ -159,15 +159,23 @@ class AdnaFragment:
 
     def add_overhang(self, overhang_length_param):
         sequence_len = len(self._sequence)
+
         if sequence_len == 0:
             self.left_overhang = 0
             self.right_overhang = 0
             return
 
-        left_overhang_len = numpy.clip(
-            RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
-        right_overhang_len = numpy.clip(
-            RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
+        left_overhang = RNG.binomial(1, 0.5) == 1
+
+        left_overhang_len = 0
+        right_overhang_len = 0
+
+        if left_overhang:
+            left_overhang_len = numpy.clip(
+                RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
+        else:
+            right_overhang_len = numpy.clip(
+                RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
 
         if (left_overhang_len + right_overhang_len) > sequence_len:
             left_overhang_ratio = left_overhang_len / (left_overhang_len +
