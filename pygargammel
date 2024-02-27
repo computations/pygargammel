@@ -10,8 +10,8 @@ from Bio import SeqIO
 from Bio import AlignIO
 from Bio.Seq import MutableSeq, Seq
 
-
 RNG = None
+
 
 class Strand(enum.Enum):
     POSITIVE = enum.auto()
@@ -135,10 +135,6 @@ class AdnaFragment:
     def to_sequence(self, ungap=False):
         tmp_seq = Seq(str(self._to_sequence_mut()))
         if ungap:
-            #tmp_seq = tmp_seq.replace('N', '')
-            #tmp_seq = tmp_seq.replace('n', '')
-            #tmp_seq = tmp_seq.replace('-', '')
-            #tmp_seq = tmp_seq.replace('?', '')
             tmp_seq = tmp_seq.ungap('N')
             tmp_seq = tmp_seq.ungap('n')
             tmp_seq = tmp_seq.ungap('-')
@@ -359,16 +355,21 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--fasta", type=str, required=True)
-    parser.add_argument("--nick-freq","--nf", type=float, required=True)
-    parser.add_argument("--overhang-parameter", "--overhang", type=float, required=True)
+    parser.add_argument("--nick-freq", "--nf", type=float, required=True)
+    parser.add_argument("--overhang-parameter",
+                        "--overhang",
+                        type=float,
+                        required=True)
     parser.add_argument("--min-length", type=int, required=False, default=None)
     parser.add_argument("--min-fragments", type=int, required=False, default=1)
     parser.add_argument("--max-fragments", type=int, required=False)
 
-    parser.add_argument("--double-strand-deamination", "--ds", 
+    parser.add_argument("--double-strand-deamination",
+                        "--ds",
                         type=float,
                         required=True)
-    parser.add_argument("--single-strand-deamination", "--ss",
+    parser.add_argument("--single-strand-deamination",
+                        "--ss",
                         type=float,
                         required=True)
 
@@ -438,8 +439,8 @@ if __name__ == "__main__":
             if not args.max_fragments is None and len(
                     frag_list) > args.max_fragments:
                 frag_list = RNG.choice(frag_list,
-                                                size=args.max_fragments,
-                                                replace=False)
+                                       size=args.max_fragments,
+                                       replace=False)
 
             write_frags_to_fasta_file(frag_list, args.output, args.align,
                                       args.ungap, args.compress,
