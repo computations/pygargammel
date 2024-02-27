@@ -13,6 +13,11 @@ from Bio.Seq import MutableSeq, Seq
 RNG = None
 
 
+class FragmentType(enum.Enum):
+    THREE_PRIME = enum.auto()
+    FIVE_PRIME = enum.auto()
+
+
 class Strand(enum.Enum):
     POSITIVE = enum.auto()
     NEGATIVE = enum.auto()
@@ -69,6 +74,8 @@ class AdnaFragment:
         self._taxa_name = taxa_name
         self._damage = []
         self._valid = None
+        self._type = FragmentType.THREE_PRIME if RNG.binomial(
+            1, 0.5) == 1 else FragmentType.FIVE_PRIME
 
     @property
     def taxa_name(self):
@@ -161,12 +168,10 @@ class AdnaFragment:
             self.right_overhang = 0
             return
 
-        left_overhang = RNG.binomial(1, 0.5) == 1
-
         left_overhang_len = 0
         right_overhang_len = 0
 
-        if left_overhang:
+        if self._type == FragmentType.FIVE_PRIME:
             left_overhang_len = numpy.clip(
                 RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
         else:
@@ -220,8 +225,10 @@ class AdnaFragment:
 
     def add_deaminations(self, single_strand_rate, double_strand_rate):
         # add left overhand damage
-        self._add_c_to_t_damage(single_strand_rate, double_strand_rate)
-        self._add_a_to_g_damage(single_strand_rate, double_strand_rate)
+        if self._type == FragmentType.FIVE_PRIME:
+            self._add_c_to_t_damage(single_strand_rate, double_strand_rate)
+        else:
+            self._add_a_to_g_damage(single_strand_rate, double_strand_rate)
 
     def to_dict(self):
         obj_dict = {
