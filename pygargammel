@@ -7,7 +7,6 @@ import sys
 import json
 import gzip
 from Bio import SeqIO
-from Bio import AlignIO
 from Bio.Seq import MutableSeq, Seq
 
 RNG = None
@@ -48,7 +47,8 @@ class SiteDamage:
             mutseq[self._relative_index] = self._new_character
         else:
             raise RuntimeError(
-                f"The old character ({self._old_character}) did not match the actual character ({mutseq[self._relative_index]})"
+                f"The old character ({self._old_character}) did not match the actual character ({
+                    mutseq[self._relative_index]})"
             )
 
     def to_dict(self):
@@ -171,23 +171,13 @@ class AdnaFragment:
         left_overhang_len = 0
         right_overhang_len = 0
 
-        if self._type == FragmentType.FIVE_PRIME:
-            left_overhang_len = numpy.clip(
-                RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
-        else:
-            right_overhang_len = numpy.clip(
-                RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
+        overhang_length = numpy.clip(
+            RNG.geometric(overhang_length_param) - 1, 0, sequence_len)
 
-        if (left_overhang_len + right_overhang_len) > sequence_len:
-            left_overhang_ratio = left_overhang_len / (left_overhang_len +
-                                                       right_overhang_len)
-            left_overhang_len = int(sequence_len * left_overhang_ratio)
-            right_overhang_len = int(sequence_len * (1 - left_overhang_ratio))
-            if left_overhang_len + right_overhang_len - sequence_len == 1:
-                if RNG.random() > 0.5:
-                    left_overhang_len += 1
-                else:
-                    right_overhang_len += 1
+        if self._type == FragmentType.FIVE_PRIME:
+            left_overhang_len = overhang_length
+        else:
+            right_overhang_len = overhang_length
 
         self.left_overhang = left_overhang_len
         self.right_overhang = right_overhang_len
@@ -269,13 +259,11 @@ def produce_nicks(sequence, nick_freq):
 
 def produce_fragments(nicks, sequence, taxa_name):
     fragments = []
-    #fragments.append(AdnaFragment(sequence, 0, nicks[0].index(), taxa_name))
 
     for n1, n2 in zip(nicks, nicks[1:]):
         fragments.append(
             AdnaFragment(sequence, n1.index(), n2.index(), taxa_name))
 
-    #fragments.append( AdnaFragment(sequence, nicks[-1].index(), len(sequence), taxa_name))
     return fragments
 
 
@@ -314,10 +302,10 @@ def write_frags_to_fasta_file(frags, filename, align, ungap, compress,
         sequence_line = None
         if align:
             sequence_line =\
-                    str(f.to_aligned_sequence(len(sequence))) + "\n"
+                str(f.to_aligned_sequence(len(sequence))) + "\n"
         else:
             sequence_line =\
-                    str(f.to_sequence(ungap=ungap)) + "\n"
+                str(f.to_sequence(ungap=ungap)) + "\n"
         if compress:
             taxa_line = taxa_line.encode('utf-8')
             sequence_line = sequence_line.encode('utf-8')
@@ -438,12 +426,12 @@ if __name__ == "__main__":
                 frags = filter_fragments(
                     frags, reference,
                     0 if args.min_length is None else args.min_length)
-                if len(frags) >= args.min_fragments:
-                    total_fragments += len(frags)
-                    frag_list.extend(frags)
+                frag_list.extend(frags)
+                if len(frag_list) >= args.min_fragments:
+                    total_fragments += len(frag_list)
                     break
 
-            if not args.max_fragments is None and len(
+            if args.max_fragments is not None and len(
                     frag_list) > args.max_fragments:
                 frag_list = RNG.choice(frag_list,
                                        size=args.max_fragments,
