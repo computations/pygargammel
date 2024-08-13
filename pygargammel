@@ -200,10 +200,10 @@ class AdnaFragment:
 
     def _add_a_to_g_damage(self, single_strand_rate, double_strand_rate):
         for i, c in enumerate(
-                self._sequence[:self.right_overhang_start_index]):
+                self._sequence[:-self.right_overhang_start_index]):
             self._roll_damage(i, c, 'A', 'G', double_strand_rate)
 
-        for i, c in enumerate(self._sequence[self.right_overhang_start_index:],
+        for i, c in enumerate(self._sequence[-self.right_overhang_start_index:],
                               start=self.right_overhang_start_index):
             self._roll_damage(i, c, 'A', 'G', single_strand_rate)
 
