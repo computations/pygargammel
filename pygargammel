@@ -75,8 +75,8 @@ class AdnaFragment:
         self._taxa_name = taxa_name
         self._damage = []
         self._valid = None
-        self._type = FragmentType.THREE_PRIME if RNG.uniform(
-            0.5) < 1 else FragmentType.FIVE_PRIME
+        self._type = (FragmentType.THREE_PRIME if RNG.binomial(1, 0.5) < 0.5
+                      else FragmentType.FIVE_PRIME)
 
     @property
     def taxa_name(self):
@@ -159,7 +159,12 @@ class AdnaFragment:
         return Seq(tmp_str)
 
     def __str__(self):
-        return f"(start: {self._start_index}, end: {self._end_index}, left overhang: {self._overhang_left_len}, right overhang: {self._overhang_right_len})"
+        return (f"(start: {self._start_index}, "
+                f"end: {self._end_index}, "
+                f"left overhang: {self._overhang_left_len}, "
+                f"right overhang: {self._overhang_right_len}, "
+                f"frag type: {self._type})"
+                )
 
     def add_overhang(self, overhang_length_param):
         sequence_len = len(self._sequence)
@@ -200,7 +205,6 @@ class AdnaFragment:
             self._roll_damage(i, c, 'C', 'T', double_strand_rate)
 
     def _add_a_to_g_damage(self, single_strand_rate, double_strand_rate):
-        breakpoint()
         for i, c in enumerate(
                 self._sequence[:self.right_overhang_start_index]):
             self._roll_damage(i, c, 'A', 'G', double_strand_rate)
@@ -230,6 +234,7 @@ class AdnaFragment:
             "damage": [d.to_dict() for d in self._damage],
             "overhang_l_len": int(self.left_overhang),
             "overhang_r_len": int(self.right_overhang),
+            "type": str(self._type),
         }
         return obj_dict
 
@@ -384,7 +389,7 @@ if __name__ == "__main__":
 
     alignment = SeqIO.parse(open(args.fasta), 'fasta')
     reference = None
-    if not args.reference is None:
+    if args.reference is not None:
         reference = PremaskedReferenceAlignment(
             SeqIO.parse(open(args.reference), 'fasta'))
         if not reference.valid():
@@ -409,7 +414,7 @@ if __name__ == "__main__":
 
     RNG = numpy.random.Generator(numpy.random.PCG64())
 
-    if not args.seed is None:
+    if args.seed is not None:
         RNG = numpy.random.Generator(numpy.random.PCG64(args.seed))
 
     all_frags = []
