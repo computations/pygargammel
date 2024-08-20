@@ -394,7 +394,8 @@ if __name__ == "__main__":
             SeqIO.parse(open(args.reference), 'fasta'))
         if not reference.valid():
             print(
-                "reference was passed, but there is no common column in the reference"
+                "reference was passed, but there is no common column"
+                " in the reference"
             )
             sys.exit(1)
 
@@ -408,7 +409,8 @@ if __name__ == "__main__":
 
     if args.align and args.ungap:
         print(
-            "Refusing to align and ungap the sequence. These flags are incompatable"
+            "Refusing to align and ungap the sequence. "
+            "These flags are incompatable"
         )
         sys.exit(1)
 
