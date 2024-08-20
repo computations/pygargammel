@@ -40,6 +40,9 @@ class DnaNick:
     def __str__(self):
         return f"(index: {self._index})"
 
+    def __repr__(self):
+        return str(self)
+
 
 class SiteDamage:
 
@@ -83,6 +86,7 @@ class AdnaFragment:
         self._valid = None
         self._type = RNG.choice([FragmentType.THREE_PRIME,
                                  FragmentType.FIVE_PRIME], 1)[0]
+        self._filtered = False
 
     @property
     def taxa_name(self):
@@ -131,6 +135,14 @@ class AdnaFragment:
     def end_index(self):
         return self._end_index
 
+    @property
+    def filtered(self):
+        return self._filtered
+
+    @filtered.setter
+    def filtered(self, f: bool):
+        self._filtered = f
+
     def __iter__(self):
         return iter(self._sequence)
 
@@ -169,8 +181,12 @@ class AdnaFragment:
                 f"end: {self._end_index}, "
                 f"left overhang: {self._overhang_left_len}, "
                 f"right overhang: {self._overhang_right_len}, "
-                f"frag type: {self._type})"
+                f"frag type: {self._type}, "
+                f"filtered: {self.filtered})"
                 )
+
+    def __repr__(self):
+        return self.__str__()
 
     def add_overhang(self, overhang_length_param):
         sequence_len = len(self._sequence)
@@ -241,6 +257,7 @@ class AdnaFragment:
             "overhang_l_len": int(self.left_overhang),
             "overhang_r_len": int(self.right_overhang),
             "type": str(self._type),
+            "filtered": self.filtered,
         }
         return obj_dict
 
@@ -281,17 +298,17 @@ def produce_fragments(nicks, sequence, taxa_name):
 
 
 def filter_fragments(frags, reference=None, min_len=0):
-    ret_frags = []
     for frag in frags:
         if not frag.valid:
+            frag.filtered = True
             continue
         if len(frag.to_sequence(ungap=True)) < min_len:
+            frag.filtered = True
             continue
         if reference is not None and not reference.check_fragment(frag):
+            frag.filtered = True
             continue
-        ret_frags.append(frag)
-
-    return ret_frags
+    return frags
 
 
 def write_frags_to_fasta_file(frags, filename, align, ungap, compress,
@@ -306,6 +323,8 @@ def write_frags_to_fasta_file(frags, filename, align, ungap, compress,
         fastafile = open(filename, 'a')
 
     for f in frags:
+        if f.filtered:
+            continue
         taxa_line = None
         if format_taxa_name:
             taxa_line = ">" + f.annotated_taxa_name + "\n"
