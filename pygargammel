@@ -47,8 +47,8 @@ class SiteDamage:
             mutseq[self._relative_index] = self._new_character
         else:
             raise RuntimeError(
-                f"The old character ({self._old_character}) did not match the actual character ({
-                    mutseq[self._relative_index]})"
+                f"The old character ({self._old_character}) did not match the"
+                "actual character ({mutseq[self._relative_index]})"
             )
 
     def to_dict(self):
@@ -59,7 +59,8 @@ class SiteDamage:
         }
 
     def __str__(self):
-        return f"(index: {self._relative_index}, old: {self._old_character}, new: {self._new_character})"
+        return f"(index: {self._relative_index}, old: {self._old_character}, "
+        "new: {self._new_character})"
 
     def __dict__(self):
         return self.to_dict()
@@ -74,8 +75,8 @@ class AdnaFragment:
         self._taxa_name = taxa_name
         self._damage = []
         self._valid = None
-        self._type = FragmentType.THREE_PRIME if RNG.binomial(
-            1, 0.5) == 1 else FragmentType.FIVE_PRIME
+        self._type = FragmentType.THREE_PRIME if RNG.uniform(
+            0.5) < 1 else FragmentType.FIVE_PRIME
 
     @property
     def taxa_name(self):
@@ -199,11 +200,12 @@ class AdnaFragment:
             self._roll_damage(i, c, 'C', 'T', double_strand_rate)
 
     def _add_a_to_g_damage(self, single_strand_rate, double_strand_rate):
+        breakpoint()
         for i, c in enumerate(
-                self._sequence[:-self.right_overhang_start_index]):
+                self._sequence[:self.right_overhang_start_index]):
             self._roll_damage(i, c, 'A', 'G', double_strand_rate)
 
-        for i, c in enumerate(self._sequence[-self.right_overhang_start_index:],
+        for i, c in enumerate(self._sequence[self.right_overhang_start_index:],
                               start=self.right_overhang_start_index):
             self._roll_damage(i, c, 'A', 'G', single_strand_rate)
 
@@ -274,7 +276,7 @@ def filter_fragments(frags, reference=None, min_len=0):
             continue
         if len(frag.to_sequence(ungap=True)) < min_len:
             continue
-        if not reference is None and not reference.check_fragment(frag):
+        if reference is not None and not reference.check_fragment(frag):
             continue
         ret_frags.append(frag)
 
