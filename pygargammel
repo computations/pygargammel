@@ -439,10 +439,14 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    RNG = numpy.random.default_rng()
-
     if args.seed is not None:
-        RNG = numpy.random.Generator(numpy.random.PCG64(args.seed))
+        seed = numpy.random.SeedSequence(args.seed)
+    else:
+        seed = numpy.random.SeedSequence()
+
+    RNG = numpy.random.default_rng(seed)
+
+    print(seed)
 
     all_frags = []
     with gzip.GzipFile(args.log + '.gz', 'w') as logfile:
@@ -476,6 +480,6 @@ if __name__ == "__main__":
                                       args.format_taxa_name)
             all_frags.append({
                 "taxa": sequence.description,
-                "fragments": [f.to_dict() for f in frag_list]
+                "fragments": [f.to_dict() for f in frag_list],
             })
         logfile.write(json.dumps(all_frags, indent=1).encode('utf-8'))
