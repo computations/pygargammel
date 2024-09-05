@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import numpy
 import os
 import enum
@@ -8,6 +7,7 @@ import json
 import gzip
 from Bio import SeqIO
 from Bio.Seq import MutableSeq, Seq
+from Bio import __version__ as BIOPY_VERSION
 
 RNG = None
 
@@ -161,10 +161,7 @@ class AdnaFragment:
     def to_sequence(self, ungap=False):
         tmp_seq = Seq(str(self._to_sequence_mut()))
         if ungap:
-            tmp_seq = tmp_seq.ungap('N')
-            tmp_seq = tmp_seq.ungap('n')
-            tmp_seq = tmp_seq.ungap('-')
-            tmp_seq = tmp_seq.ungap('?')
+            tmp_seq = remove_gaps(tmp_seq)
         return tmp_seq
 
     def to_aligned_sequence(self, sequence_length):
@@ -283,6 +280,7 @@ def produce_nicks(sequence, nick_freq):
     for i, _ in enumerate(sequence, start=1):
         if RNG.uniform() < nick_freq:
             nicks.append(DnaNick(i))
+        # if nicks[-1].index != len(sequence):
     nicks.append(DnaNick(len(sequence)))
     return nicks
 
@@ -291,6 +289,8 @@ def produce_fragments(nicks, sequence, taxa_name):
     fragments = []
 
     for n1, n2 in zip(nicks, nicks[1:]):
+        if n1.index == n2.index:
+            print(n1, n2)
         fragments.append(
             AdnaFragment(sequence, n1.index(), n2.index(), taxa_name))
 
@@ -375,6 +375,24 @@ class PremaskedReferenceAlignment:
 
     def valid(self):
         return self._masked_sequence.any()
+
+
+def remove_gaps(seq):
+    if int(BIOPY_VERSION.split('.')[1]) <= 79:
+        seq = seq.ungap('-')
+    else:
+        seq = seq.replace('-', "")
+    return seq
+
+
+def count_unfilterd_frags(frag_list):
+    total = 0
+
+    for f in frag_list:
+        if not f.filtered:
+            total += 1
+
+    return total
 
 
 if __name__ == "__main__":
@@ -463,8 +481,8 @@ if __name__ == "__main__":
                     frags, reference,
                     0 if args.min_length is None else args.min_length)
                 frag_list.extend(frags)
-                if len(frag_list) >= args.min_fragments:
-                    total_fragments += len(frag_list)
+                if count_unfilterd_frags(frag_list) >= args.min_fragments:
+                    total_fragments += count_unfilterd_frags(frag_list)
                     break
 
             if args.max_fragments is not None and len(
