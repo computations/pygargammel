@@ -385,14 +385,9 @@ def remove_gaps(seq):
     return seq
 
 
-def count_unfilterd_frags(frag_list):
-    total = 0
+def count_unfiltered_frags(frag_list):
 
-    for f in frag_list:
-        if not f.filtered:
-            total += 1
-
-    return total
+    return numpy.sum([0 if f.filtered else 1 for f in frag_list])
 
 
 if __name__ == "__main__":
@@ -405,7 +400,7 @@ if __name__ == "__main__":
                         "--overhang",
                         type=float,
                         required=True)
-    parser.add_argument("--min-length", type=int, required=False, default=None)
+    parser.add_argument("--min-length", type=int, required=False, default=0)
     parser.add_argument("--min-fragments", type=int, required=False, default=1)
     parser.add_argument("--max-fragments", type=int, required=False)
 
@@ -477,19 +472,20 @@ if __name__ == "__main__":
                     frag.add_overhang(args.overhang_parameter)
                     frag.add_deaminations(args.single_strand_deamination,
                                           args.double_strand_deamination)
-                frags = filter_fragments(
-                    frags, reference,
-                    0 if args.min_length is None else args.min_length)
+                frags = filter_fragments(frags, reference, args.min_length)
                 frag_list.extend(frags)
-                if count_unfilterd_frags(frag_list) >= args.min_fragments:
-                    total_fragments += count_unfilterd_frags(frag_list)
+                new_frags = count_unfiltered_frags(frag_list)
+                if new_frags >= args.min_fragments:
+                    total_fragments += new_frags
                     break
 
-            if args.max_fragments is not None and len(
-                    frag_list) > args.max_fragments:
-                frag_list = RNG.choice(frag_list,
-                                       size=args.max_fragments,
-                                       replace=False)
+            while (args.max_fragments is not None 
+                   and total_fragments > args.max_fragments):
+                index = RNG.randint(0, len(frag_list))
+                if frag_list[index].filtered:
+                    continue
+                frag_list[index].filtered = True
+                total_fragments -= 1
 
             write_frags_to_fasta_file(frag_list, args.output, args.align,
                                       args.ungap, args.compress,
