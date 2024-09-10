@@ -479,7 +479,7 @@ if __name__ == "__main__":
                     total_fragments += new_frags
                     break
 
-            while (args.max_fragments is not None 
+            while (args.max_fragments is not None
                    and total_fragments > args.max_fragments):
                 index = RNG.randint(0, len(frag_list))
                 if frag_list[index].filtered:
