@@ -87,6 +87,7 @@ class AdnaFragment:
         self._type = RNG.choice([FragmentType.THREE_PRIME,
                                  FragmentType.FIVE_PRIME], 1)[0]
         self._filtered = False
+        self._replicate = None
 
     @property
     def taxa_name(self):
@@ -94,8 +95,16 @@ class AdnaFragment:
 
     @property
     def annotated_taxa_name(self):
-        return self.taxa_name + "_" + str(self._start_index) + "-" + str(
-            self._end_index)
+        return (f"{self.taxa_name}_{self.start_index}"
+                f"-{self.end_index}-{self.replicate}")
+
+    @property
+    def replicate(self):
+        return self._replicate
+
+    @replicate.setter
+    def replicate(self, i: int):
+        self._replicate = i
 
     @property
     def left_overhang(self):
@@ -148,6 +157,9 @@ class AdnaFragment:
 
     def __len__(self):
         return len(self._sequence)
+
+    def key(self):
+        return (self.taxa_name, self.start_index, self.end_index)
 
     def add_damage(self, damage):
         self._damage.append(damage)
@@ -311,8 +323,21 @@ def filter_fragments(frags, reference=None, min_len=0):
     return frags
 
 
+def assign_replicates(frags):
+    frag_set = {}
+    for f in frags:
+        if f.filtered:
+            continue
+        f_key = f.key()
+        if f_key not in frag_set:
+            frag_set[f_key] = 0
+        f.replicate = frag_set[f_key]
+        frag_set[f_key] += 1
+
+
 def write_frags_to_fasta_file(frags, filename, align, ungap, compress,
                               format_taxa_name):
+    assign_replicates(frags)
     fastafile = None
     if compress:
         filename_ext = os.path.splitext(filename)[1]
@@ -386,7 +411,6 @@ def remove_gaps(seq):
 
 
 def count_unfiltered_frags(frag_list):
-
     return numpy.sum([0 if f.filtered else 1 for f in frag_list])
 
 
