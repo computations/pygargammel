@@ -505,7 +505,7 @@ if __name__ == "__main__":
 
             while (args.max_fragments is not None
                    and total_fragments > args.max_fragments):
-                index = RNG.randint(0, len(frag_list))
+                index = RNG.integers(0, len(frag_list))
                 if frag_list[index].filtered:
                     continue
                 frag_list[index].filtered = True
