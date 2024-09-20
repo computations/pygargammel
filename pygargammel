@@ -289,12 +289,23 @@ def is_informative_char(c):
 
 def produce_nicks(sequence, nick_freq):
     nicks = [DnaNick(0)]
-    for i, _ in enumerate(sequence, start=1):
-        if RNG.uniform() < nick_freq:
-            nicks.append(DnaNick(i))
-        # if nicks[-1].index != len(sequence):
-    nicks.append(DnaNick(len(sequence)))
+
+    current = 0
+    total = len(sequence)
+    while current < total:
+        n = numpy.clip(RNG.geometric(nick_freq), 0, total-current)
+        current += n
+        nicks.append(DnaNick(current))
     return nicks
+
+    # def produce_nicks(sequence, nick_freq):
+    #    nicks = [DnaNick(0)]
+    #    for i, _ in enumerate(sequence, start=1):
+    #        if RNG.uniform() < nick_freq:
+    #            nicks.append(DnaNick(i))
+    #        # if nicks[-1].index != len(sequence):
+    #    nicks.append(DnaNick(len(sequence)))
+    #    return nicks
 
 
 def produce_fragments(nicks, sequence, taxa_name):
