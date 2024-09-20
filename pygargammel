@@ -289,6 +289,9 @@ def is_informative_char(c):
 
 def produce_nicks(sequence, nick_freq):
     nicks = [DnaNick(0)]
+    if nick_freq == 0.0:
+        nicks.append(DnaNick(len(sequence)))
+        return nicks
 
     current = 0
     total = len(sequence)
